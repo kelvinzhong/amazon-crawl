@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="10 second" debug="true">
+	<appender name="F"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<File>/opt/logs/organization/foundation.log</File>
+		<encoder>
+			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t]: %c{1}.%M %L: %m%n
+			</pattern>
+			<charset>UTF8</charset>
+		</encoder>
+
+		<triggeringPolicy
+			class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+			 
+			<maxFileSize>5MB</maxFileSize>
+			  
+		</triggeringPolicy>
+
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>/opt/logs/organization/foundation.log.%d{.yyyy-MM-dd}
+			</fileNamePattern>
+			<maxHistory>30</maxHistory>
+		</rollingPolicy>
+	</appender>
+
+
+
+	<logger name="com.organization" level="INFO" />
+	<logger name="com.organization" level="DEBUG" />
+	<logger name="com.amazon" level="INFO" />
+	<logger name="com.amazon" level="DEBUG" />
+	<logger name="org.apache.ibatis" level="INFO" />
+	<!-- 关闭quartz日志 -->
+	<logger name="org.quartz" level="ERROR" />
+	<!-- 关闭xmemcached日志 -->
+	<logger name="com.google" level="ERROR" />
+	<logger name="net.rubyeye" level="ERROR" />
+
+	<root level="INFO">
+		<appender-ref ref="F" />
+	</root>
+</configuration>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:p="http://www.springframework.org/schema/p" xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+						http://www.springframework.org/schema/beans/spring-beans-3.2.xsd 
+						http://www.springframework.org/schema/context 
+						http://www.springframework.org/schema/context/spring-context-3.2.xsd 
+						http://www.springframework.org/schema/mvc 
+						http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd">
+
+	<context:component-scan base-package="com.amazon.crawl.controller" />
+	
+	<bean id="htmlHandler" class="com.amazon.crawl.HtmlUnitHandler"
+		init-method="init" destroy-method="shutdown" scope="singleton">
+	</bean>
+
+	<bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">
+		<property name="messageConverters">
+			<list>
+
+				<!-- <bean id="fastJsonHttpMessageConverter" class="com.alibaba.fastjson.support.spring.FastJsonHttpMessageConverter"> -->
+				<bean id="fastJsonHttpMessageConverter"
+					class="com.organization.common.framework.FastJsonHttpMessageConverter">
+					<!-- messageConverters即可，因为其默认采用的iso8895-1的编码 <bean id="fastJsonHttpMessageConverter" 
+						class="org.springframework.http.converter.StringHttpMessageConverter"> -->
+					<property name="supportedMediaTypes">
+						<list>
+							<value>text/html;charset=UTF-8</value><!-- 避免IE出现下载JSON文件的情况 -->
+							<value>text/plain;charset=UTF-8</value><!-- 纯文本格式 -->
+							<value>application/json;charset=UTF-8</value>
+						</list>
+					</property>
+				</bean>
+
+			</list>
+		</property>
+	</bean>
+
+	<bean class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping"/>
+
+</beans>
