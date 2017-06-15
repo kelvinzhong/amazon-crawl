@@ -18,6 +18,7 @@ import javax.annotation.Resource;
 
 import org.apache.commons.httpclient.params.DefaultHttpParams;
 import org.apache.commons.httpclient.params.HttpMethodParams;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.config.RequestConfig;
@@ -37,7 +38,9 @@ import com.amazon.crawl.HtmlUnitHandler;
 import com.amazon.crawl.WebClientFactory;
 import com.amazon.crawl.dao.ProductDao;
 import com.amazon.crawl.dao.ProxyDao;
+import com.amazon.crawl.model.AmazonUser;
 import com.amazon.crawl.model.SKUInfo;
+import com.amazon.crawl.model.SimulationTask;
 import com.amazon.crawl.model.WebProxy;
 import com.amazon.crawl.service.CrawlService;
 import com.amazon.crawl.service.SimulationService;
@@ -58,12 +61,14 @@ import com.gargoylesoftware.htmlunit.html.HtmlSubmitInput;
 import com.gargoylesoftware.htmlunit.html.HtmlTextInput;
 import com.gargoylesoftware.htmlunit.html.HtmlUnorderedList;
 import com.gargoylesoftware.htmlunit.util.Cookie;
+import com.organization.common.bean.SystemException;
 import com.organization.common.config.properties.Configuration;
 import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 
 @Service
 public class CrawlServiceImpl implements CrawlService {
 	private static final Logger log = LoggerFactory.getLogger(CrawlServiceImpl.class);
+	private static final Logger simulationLog = LoggerFactory.getLogger("SimulationTask");
 
 	@Resource
 	private ProductDao productDao;
@@ -75,7 +80,7 @@ public class CrawlServiceImpl implements CrawlService {
 	@Override
 	public void crawlKeywordAsinList(String keyword, String category, WebProxy proxy, WebClientFactory factory)
 			throws Exception {
-		log.info("Try to crawl asin list in keyword '{}' of category {}, proxy with {}", keyword, category,
+		simulationLog.info("Try to crawl asin list in keyword '{}' of category {}, proxy with {}", keyword, category,
 				proxy.getHost());
 
 		// DefaultHttpParams.getDefaultParams().setBooleanParameter(HttpMethodParams.SINGLE_COOKIE_HEADER,
@@ -95,12 +100,12 @@ public class CrawlServiceImpl implements CrawlService {
 			}
 
 			HtmlPage home = webClient.getPage("https://www.amazon.com/");
-			log.info("Open amazon home page");
+			simulationLog.info("Open amazon home page");
 
 			HtmlForm search = home.getFormByName("site-search");
 			HtmlTextInput searchInput = search.getInputByName("field-keywords");
 			searchInput.setValueAttribute(keyword);
-			log.info("Search for '{}'", keyword);
+			simulationLog.info("Search for '{}'", keyword);
 
 			search.getSelectByName("url").getOptionByText(category).click();
 
@@ -117,6 +122,7 @@ public class CrawlServiceImpl implements CrawlService {
 
 			while (!result.getByXPath("//a[@title='Next Page']").isEmpty()) {
 
+				String url = result.getUrl().toURI().toString();
 				HtmlUnorderedList ulList = result.getHtmlElementById("s-results-list-atf");
 				Iterable<DomElement> liList = ulList.getChildElements();
 
@@ -126,14 +132,14 @@ public class CrawlServiceImpl implements CrawlService {
 				for (DomElement li : liList) {
 					SKUInfo info = null;
 					if (li.asText().contains("Shop by Category")) {
-						log.info("Asin {} Shop by Category", li.getAttribute("data-asin"));
+						simulationLog.info("Asin {} Shop by Category", li.getAttribute("data-asin"));
 						continue;
 					}
 
 					try {
 						info = getAsinInfo(li, keyword, category, column);
 					} catch (Exception e) {
-						log.error("error during crawl asin ifno", e);
+						simulationLog.error("error during crawl asin ifno", e);
 						continue;
 					}
 
@@ -144,27 +150,29 @@ public class CrawlServiceImpl implements CrawlService {
 				lastPrediction = simulationService.predictSimulationNum(skuInfoList, lastPrediction);
 
 				if (skuInfoList.size() > 0) {
-					log.info("Page {} have total {} SKU", skuInfoList.get(0).getPageNum(), skuInfoList.size());
+					simulationLog.info("Page {} have total {} SKU", skuInfoList.get(0).getPageNum(),
+							skuInfoList.size());
 					if (page == skuInfoList.get(0).getPageNum()) {
-						log.warn("crawl in a loop {}", result.asXml());
+						simulationLog.warn("crawl in a loop {}", result.asXml());
+						result = webClient.getPage(url.replace("page=" + page, "page=" + (page + 1)));
+						continue;
+					} else
 						page = skuInfoList.get(0).getPageNum();
-						break;
-					}
+
 					try {
 						productDao.insertKeywordSkuInfoList(skuInfoList);
 					} catch (Exception e) {
-						log.error("", e);
+						simulationLog.error("", e);
 						try {
-							log.debug("currunt page sku info json list {}", JSON.toJSONString(skuInfoList));
+							simulationLog.debug("currunt page sku info json list {}", JSON.toJSONString(skuInfoList));
 							Thread.sleep(5000);
 						} catch (Exception e2) {
-							log.error("try to insert to mongo fail again", e);
+							simulationLog.error("try to insert to mongo fail again", e);
 						}
 					}
 				}
 
 				while (true) {
-
 					DomElement nextPage = result.getElementById("pagnNextLink");
 					try {
 						ulList = null;
@@ -177,14 +185,63 @@ public class CrawlServiceImpl implements CrawlService {
 						System.gc();
 
 						result = nextPage.click();
+						if (StringUtils.isEmpty(result.asText())) {
+							simulationLog.debug("empty next page {}", url);
+							if (!url.contains("page="))
+								throw new SystemException("Restart Task");
+
+							while (true) {
+								try {
+									result = webClient.getPage(url.replace("page=" + page, "page=" + (page + 1)));
+									if (!StringUtils.isEmpty(result.asText()))
+										break;
+								} catch (Exception e) {
+									simulationLog.error("", e);
+									if (!e.toString().contains("Read timed out"))
+										return;
+								}
+							}
+							simulationLog.debug("{}", result.asText());
+						}
 						nextPage = null;
 						break;
 					} catch (Exception e) {
-						log.error("", e);
+						simulationLog.error("", e);
+						if (e.toString().contains("Restart Task"))
+							throw new SystemException("Restart Task");
+
 						if (!e.toString().contains("Read timed out")) {
+
 							String uri = nextPage.getAttribute("href");
 							nextPage.setAttribute("href", uri.substring(0, uri.indexOf("spIA=") - 1));
-							result = nextPage.click();
+							while (true) {
+								try {
+									result = webClient.getPage(uri.substring(0, uri.indexOf("spIA=") - 1));
+
+									if (StringUtils.isEmpty(result.asText())) {
+										if (!uri.contains("page="))
+											throw new SystemException("Restart Task");
+
+										while (true) {
+											try {
+												result = webClient
+														.getPage(url.replace("page=" + page, "page=" + (page + 1)));
+												if (!StringUtils.isEmpty(result.asText()))
+													break;
+											} catch (Exception e2) {
+												simulationLog.error("", e2);
+												if (!e.toString().contains("Read timed out"))
+													return;
+											}
+										}
+									} else
+										break;
+								} catch (Exception e2) {
+									simulationLog.error("", e);
+									if (!e2.toString().contains("Read timed out"))
+										return;
+								}
+							}
 							nextPage = null;
 							break;
 						}
@@ -193,8 +250,8 @@ public class CrawlServiceImpl implements CrawlService {
 			}
 
 			if (result.getByXPath("//a[@title='Next Page']").isEmpty()) {
-				log.info("keyword {} category {} has no next page", keyword, category);
-				log.debug("{}", result.asXml());
+				simulationLog.info("keyword {} category {} has no next page", keyword, category);
+				simulationLog.debug("{}", result.asXml());
 			}
 		} finally {
 			Set<Cookie> cookies = webClient.getCookieManager().getCookies();
@@ -329,7 +386,7 @@ public class CrawlServiceImpl implements CrawlService {
 				return Arrays.asList(result);
 			}
 		} catch (Exception e) {
-			log.error("occur error on get userName : {}", e.toString());
+			simulationLog.error("occur error on get userName : {}", e.toString());
 		} finally {
 			// 关闭连接,释放资源
 			try {

@@ -38,6 +38,11 @@ public class ProxyDaoImpl implements ProxyDao {
 	}
 
 	@Override
+	public WebProxy getProxyByHost(String host) {
+		return mongoTemplate.findOne(query(where("host").is(host)), WebProxy.class);
+	}
+
+	@Override
 	public void updateProxyUserCountById(String id, int count) {
 		mongoTemplate.updateFirst(query(where("id").is(id)),
 				new Update().inc("userCount", count).set("updateTime", new Date()), WebProxy.class);

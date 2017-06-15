@@ -12,14 +12,14 @@ public class TargetSKU {
 	private Date createTime;
 	private Date updateTime;
 	private int status;
-	private List<String> category;
+	private List<String> categoryList;
 
-	public List<String> getCategory() {
-		return category;
+	public List<String> getCategoryList() {
+		return categoryList;
 	}
 
-	public void setCategory(List<String> category) {
-		this.category = category;
+	public void setCategoryList(List<String> categoryList) {
+		this.categoryList = categoryList;
 	}
 
 	public List<String> getKeywordList() {

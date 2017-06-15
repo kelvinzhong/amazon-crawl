@@ -32,13 +32,13 @@ public abstract class AbstractTaskJob implements Job {
 	 * 
 	 * @param context
 	 */
-	public static void selfInit(ApplicationContext context, Class<? extends Job> clz, String name, String cron)
+	public static void selfInit( Class<? extends Job> clz, String name, String cron)
 			throws Exception {
 
 		log.debug("job被初始化");
 		Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
 		JobDetail jobDetail = newJob(clz).withIdentity(name).build();
-		setJodDetail(context, jobDetail.getJobDataMap());
+		setJodDetail(jobDetail.getJobDataMap());
 		Trigger trigger = newTrigger().withIdentity(name).withSchedule(cronSchedule(cron)).build();
 		scheduler.scheduleJob(jobDetail, trigger);
 		scheduler.start();
@@ -52,7 +52,7 @@ public abstract class AbstractTaskJob implements Job {
 	 * @param dataMap
 	 * @throws UossException
 	 */
-	protected static void setJodDetail(ApplicationContext context, JobDataMap dataMap) {
+	protected static void setJodDetail(JobDataMap dataMap) {
 		for (Entry<String, Object> en : jobDetail.entrySet()) {
 			dataMap.put(en.getKey(), en.getValue());
 		}

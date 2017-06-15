@@ -7,6 +7,7 @@ import javax.annotation.Resource;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Repository;
 
 import com.amazon.crawl.dao.ProductDao;
@@ -20,7 +21,7 @@ import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
 
 @Repository
-public class ProduectDaoImpl implements ProductDao {
+public class ProductDaoImpl implements ProductDao {
 
 	@Resource
 	private MongoTemplate mongoTemplate;
@@ -52,7 +53,7 @@ public class ProduectDaoImpl implements ProductDao {
 	@Override
 	public long getCountBeforeSKU(String keyword, String category, int page, int column, Date date) {
 		return mongoTemplate.count(query(where("keyword").is(keyword).and("category").is(category).and("createTime")
-				.is(date).and("pageNum").is(page).and("column").lt(column).and("sponsored").is(false)), SKUInfo.class);
+				.is(date).and("pageNum").is(page).and("columnNum").lt(column).and("sponsored").is(false)), SKUInfo.class);
 	}
 
 	@Override
@@ -63,5 +64,14 @@ public class ProduectDaoImpl implements ProductDao {
 	@Override
 	public void insertTargetSKU(TargetSKU tagetSku) {
 		mongoTemplate.insert(tagetSku);
+	}
+
+	@Override
+	public List<DailyRanking> getSKURankingList(String asin, String category, String keyword, Date startDate,
+			Date endDate) {
+		return mongoTemplate.find(
+				query(where("asin").is(asin).and("category").is(category).and("keyword").is(keyword).andOperator(
+						new Criteria().and("rankDate").gte(startDate), new Criteria().and("rankDate").lte(endDate))),
+				DailyRanking.class);
 	}
 }

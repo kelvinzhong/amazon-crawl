@@ -15,6 +15,15 @@ public class AmazonUser {
 	private Date updateTime;
 	private String taskId;
 	private String cookies;
+	private int status;
+
+	public int getStatus() {
+		return status;
+	}
+
+	public void setStatus(int status) {
+		this.status = status;
+	}
 
 	public String getCookies() {
 		return cookies;

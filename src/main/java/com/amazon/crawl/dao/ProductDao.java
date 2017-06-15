@@ -23,4 +23,6 @@ public interface ProductDao {
 
 	long getCountBeforeSKU(String keyword, String category, int page, int column, Date date);
 
+	List<DailyRanking> getSKURankingList(String asin, String category, String keyword, Date startDate, Date endDate);
+
 }

@@ -3,4 +3,3 @@ project.code=3
 
 register.task.generate=true
 register.amazon.user=true
-simulation.task=false

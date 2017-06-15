@@ -23,23 +23,31 @@ import org.springframework.util.CollectionUtils;
 
 import com.amazon.common.util.general.DateUtils;
 import com.amazon.crawl.WebClientFactory;
+import com.amazon.crawl.dao.AmazonUserDao;
 import com.amazon.crawl.dao.ProductDao;
 import com.amazon.crawl.dao.ProxyDao;
 import com.amazon.crawl.dao.SimulationDao;
+import com.amazon.crawl.model.AmazonUser;
 import com.amazon.crawl.model.DailyRanking;
 import com.amazon.crawl.model.SKUInfo;
+import com.amazon.crawl.model.SimulationTask;
 import com.amazon.crawl.model.TargetSKU;
 import com.amazon.crawl.model.WebProxy;
 import com.amazon.crawl.service.CrawlService;
+import com.amazon.crawl.service.EmulateShoppingService;
 import com.amazon.crawl.service.SimulationService;
 import com.organization.common.config.properties.Configuration;
+import com.organization.common.util.general.Constants;
 
 @Service("simulationService")
 public class SimulationServiceImpl implements SimulationService {
 	private static final Logger log = LoggerFactory.getLogger(SimulationServiceImpl.class);
+	private static final Logger simulationLog = LoggerFactory.getLogger("SimulationTask");
 
 	public static Date taskDate = null;
-	private static Map<String, Set<String>> keywordMap = new HashMap<String, Set<String>>();
+	public static Map<String, Set<String>> keywordMap = new HashMap<String, Set<String>>();
+	public static Map<String, Set<String>> doneMap = new HashMap<String, Set<String>>();
+	public static Map<String, List<TargetSKU>> waitingMap = new HashMap<String, List<TargetSKU>>();
 
 	@Resource
 	private ProductDao productDao;
@@ -48,14 +56,51 @@ public class SimulationServiceImpl implements SimulationService {
 	@Resource
 	private SimulationDao simulationDao;
 	@Resource
+	private AmazonUserDao amazonUserDao;
+	@Resource
 	private ProxyDao proxyDao;
 	@Resource(name = "rankingExecutor")
 	private ExecutorService rankingExecutor;
+	@Resource(name = "simulationExecutor")
+	private ExecutorService simulationExecutor;
+	@Resource
+	private EmulateShoppingService emulateShoppingService;
+
+	@Override
+	public boolean executeSimulationTask() {
+		SimulationTask task = simulationDao.getSimulationTask();
+
+		if (task == null)
+			return true;
+
+		simulationExecutor.submit(() -> {
+			WebClientFactory factory = new WebClientFactory();
+
+			while (true) {
+				try {
+					long count = amazonUserDao.getAmazonUserCount();
+					if (count == 0) {
+						simulationDao.updateSimulationTaskStatus(task.getId(), Constants.STATUS_NORMAL);
+						return;
+					}
+
+					AmazonUser user = amazonUserDao.getRandomAmazonUser(new Long(count).intValue());
+
+					emulateShoppingService.simulateClickPage(factory, task, user);
+					break;
+				} catch (Exception e) {
+					simulationLog.error("", e);
+				}
+			}
+		});
+
+		return false;
+	}
 
 	@Override
 	public void startGenerateSimulationTask() {
 
-		log.info("Start generate simulation task");
+		simulationLog.info("Start generate simulation task");
 		Date cursor = new Date();
 		long totalProxy = proxyDao.getTotalProxyCount();
 		List<TargetSKU> skuList = productDao.getSkuList(cursor);
@@ -63,7 +108,7 @@ public class SimulationServiceImpl implements SimulationService {
 		while (!CollectionUtils.isEmpty(skuList)) {
 
 			for (TargetSKU sku : skuList)
-				for (String category : sku.getCategory())
+				for (String category : sku.getCategoryList())
 					for (String keyword : sku.getKeywordList())
 						if (CollectionUtils.isEmpty(keywordMap.get(category))
 								|| !keywordMap.get(category).contains(keyword)) {
@@ -84,20 +129,51 @@ public class SimulationServiceImpl implements SimulationService {
 										crawlService.crawlKeywordAsinList(keyword, category, proxy, factory);
 										break;
 									} catch (Exception e) {
-										log.error("", e);
+										simulationLog.error("", e);
 									}
 								}
+
+								Set<String> doneList = doneMap.get(category);
+								if (CollectionUtils.isEmpty(doneList))
+									doneList = new HashSet<String>();
+								doneList.add(keyword);
+								doneMap.put(category, doneList);
+
 								setDailyRankingAndSimulationTask(sku, category, keyword);
+
+								List<TargetSKU> waitingList = waitingMap.get(category + keyword);
+
+								if (!CollectionUtils.isEmpty(waitingList)) {
+									waitingList.forEach(waitSku -> {
+										log.info("Start generate asin {} simulation task and daily ranking",
+												waitSku.getAsin());
+										setDailyRankingAndSimulationTask(waitSku, category, keyword);
+									});
+
+									waitingMap.remove(category + keyword);
+								}
 							});
 
-						} else
-							setDailyRankingAndSimulationTask(sku, category, keyword);
+						} else {
+
+							if (!CollectionUtils.isEmpty(doneMap.get(category))
+									&& doneMap.get(category).contains(keyword)) {
+								log.info("category {} keyword {} already scaned", category, keyword);
+								setDailyRankingAndSimulationTask(sku, category, keyword);
+							} else {
+								List<TargetSKU> waitingList = waitingMap.get(category + keyword);
+								if (CollectionUtils.isEmpty(waitingList))
+									waitingList = new ArrayList<TargetSKU>();
+								waitingList.add(sku);
+								waitingMap.put(category + keyword, waitingList);
+							}
+						}
 
 			cursor = skuList.get(skuList.size() - 1).getCreateTime();
 			skuList = productDao.getSkuList(cursor);
 		}
 
-		log.info("Generate simulation task for {} finished", taskDate);
+		simulationLog.info("Generate simulation task for {} finished", taskDate);
 	}
 
 	@Override
@@ -161,6 +237,8 @@ public class SimulationServiceImpl implements SimulationService {
 				prediction = totalReview / (reviewNum.size() - 2);
 				if (prediction > 200)
 					prediction = new Random().nextInt(100) + 150;
+				if (!infoList.get(0).getCategory().equals("All Departments"))
+					prediction *= 0.8;
 			} else
 				prediction = (((totalReview / (reviewNum.size() - 2)) + x) / 2);
 
@@ -168,7 +246,10 @@ public class SimulationServiceImpl implements SimulationService {
 			prediction = x;
 
 		for (SKUInfo info : infoList)
-			info.setPresetSimulationNum(prediction + new Random().nextInt(50));
+			if (lastPrediction == -1 && prediction > 200)
+				info.setPresetSimulationNum(new Random().nextInt(50));
+			else
+				info.setPresetSimulationNum(prediction + new Random().nextInt(50));
 
 		return prediction;
 	}

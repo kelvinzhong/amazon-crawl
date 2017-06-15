@@ -13,4 +13,6 @@ public interface SimulationService {
 
 	void setDailyRankingAndSimulationTask(TargetSKU sku, String category, String keyword);
 
+	boolean executeSimulationTask();
+
 }

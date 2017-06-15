@@ -42,7 +42,7 @@ public class HttpTextConn {
 
 	public static final String SIGN_SECRET = "";
 
-	public static final String url = "http://121.201.68.254:8080/message/";
+	public static final String url = "http://121.201.28.228:8080/amazon-crawl/";
 	private static Properties props = new Properties();
 
 	public static JSONObject sendMessage(String surfixUrl) throws Exception {

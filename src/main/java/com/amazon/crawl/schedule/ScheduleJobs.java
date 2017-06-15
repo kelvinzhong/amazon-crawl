@@ -1,7 +1,9 @@
 package com.amazon.crawl.schedule;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -32,6 +34,7 @@ public class ScheduleJobs extends AbstractTaskJob {
 			if (job_name.equals(SIMULATION_TASK_KEY)) {
 				log.info(" {}，分配当日模拟点击Task列表开始  >>>>>>>", now.toString());
 				SimulationServiceImpl.taskDate = DateUtils.getTodayZeorHour();
+				SimulationServiceImpl.keywordMap.clear();
 				simulationService.startGenerateSimulationTask();
 				log.info(" {} - {}，分配当日模拟点击Task列表结束  >>>>>>>", now.toString(), new Date().toString());
 			}
@@ -49,8 +52,8 @@ public class ScheduleJobs extends AbstractTaskJob {
 			AbstractTaskJob.jobDetail.put(SIMULATION_TASK_KEY,
 					context.getBean("simulationService", SimulationService.class));
 
-			String cron = Configuration.getValue("SIMULATION_TASK_QUARTZ_CRON", "0 15 15 * * ?");
-			AbstractTaskJob.selfInit(context, ScheduleJobs.class, SIMULATION_TASK_KEY, cron);
+			String cron = Configuration.getValue("SIMULATION_TASK_QUARTZ_CRON", "0 00 04 * * ?");
+			AbstractTaskJob.selfInit(ScheduleJobs.class, SIMULATION_TASK_KEY, cron);
 			log.info("********************分配当日模拟点击Task列表初始化成功********************"); // TODO
 			// 每晚10.30执行生成第二天任务列表
 

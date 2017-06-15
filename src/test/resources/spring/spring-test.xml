@@ -24,7 +24,7 @@
 		class="com.organization.common.config.properties.MutilPropertyPlaceholderConfigurer">
 		<property name="locations">
 			<list>
-				<value>classpath*:config/*.properties</value>
+				<value>classpath*:config/*.test</value>
 			</list>
 		</property>
 	</bean>

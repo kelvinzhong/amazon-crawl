@@ -26,4 +26,6 @@ public interface ProxyDao {
 
 	void updateProxyCookies(String id, String bs);
 
+	WebProxy getProxyByHost(String host);
+
 }

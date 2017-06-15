@@ -10,7 +10,7 @@
 	</appender>
 	<appender name="F"
 		class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<File>C:/opt/logs/organization/foundation.log</File>
+		<File>C:/opt/logs/amazon/crawl.log</File>
 		<encoder>
 			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t] :
 				%C{1}.%M %L : %m%n
@@ -26,19 +26,107 @@
 		</triggeringPolicy>
 
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-			<fileNamePattern>C:/opt/logs/organization/foundation.log.%d{.yyyy-MM-dd}
+			<fileNamePattern>C:/opt/logs/amazon/crawl.log.%d{.yyyy-MM-dd}
 			</fileNamePattern>
 			<maxHistory>30</maxHistory>
 		</rollingPolicy>
 	</appender>
-	<logger name="com.organization" level="DEBUG" />
-	<logger name="com.amazon" level="DEBUG" />
-	<logger name="org.springframework" level="INFO" />
+	<appender name="Register"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<File>C:/opt/logs/amazon/register.log</File>
+		<encoder>
+			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t] :
+				%C{1}.%M %L : %m%n
+			</pattern>
+			<charset>UTF8</charset>
+		</encoder>
 
+		<triggeringPolicy
+			class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+			 
+			<maxFileSize>5MB</maxFileSize>
+			  
+		</triggeringPolicy>
 
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>C:/opt/logs/amazon/register.log.%d{.yyyy-MM-dd}
+			</fileNamePattern>
+			<maxHistory>30</maxHistory>
+		</rollingPolicy>
+	</appender>
+	<appender name="Simulation"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<File>C:/opt/logs/amazon/simulation.log</File>
+		<encoder>
+			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t] :
+				%C{1}.%M %L : %m%n
+			</pattern>
+			<charset>UTF8</charset>
+		</encoder>
 
-	<root level="INFO">
+		<triggeringPolicy
+			class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+			 
+			<maxFileSize>5MB</maxFileSize>
+			  
+		</triggeringPolicy>
+
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>C:/opt/logs/amazon/simulation.log.%d{.yyyy-MM-dd}
+			</fileNamePattern>
+			<maxHistory>30</maxHistory>
+		</rollingPolicy>
+	</appender>
+	<appender name="EmulateShopping"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<File>/opt/logs/amazon/emulateShopping.log</File>
+		<encoder>
+			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t]: %c{1}.%M %L: %m%n
+			</pattern>
+			<charset>UTF8</charset>
+		</encoder>
+
+		<triggeringPolicy
+			class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+			 
+			<maxFileSize>5MB</maxFileSize>
+			  
+		</triggeringPolicy>
+
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>/opt/logs/amazon/emulateShopping.log.%d{.yyyy-MM-dd}
+			</fileNamePattern>
+			<maxHistory>30</maxHistory>
+		</rollingPolicy>
+	</appender>
+	
+	<logger name="com.organization" level="DEBUG" >
 		<appender-ref ref="STDOUT" />
 		<appender-ref ref="F" />
+    </logger>
+	<logger name="com.amazon" level="DEBUG" >
+		<appender-ref ref="STDOUT" />
+		<appender-ref ref="F" />
+    </logger>
+	<logger name="org.springframework" level="INFO" >
+		<appender-ref ref="STDOUT" />
+		<appender-ref ref="F" />
+    </logger>
+	<logger name="RegisterTask" level="DEBUG" >
+		<appender-ref ref="Register" />
+    </logger>
+    <logger name="SimulationTask" level="DEBUG" >
+		<appender-ref ref="Simulation" />
+    </logger>
+    <logger name="EmulateShoppingTask" level="DEBUG">
+		<appender-ref ref="EmulateShopping" />
+	</logger>
+	
+
+	<root level="ERROR">
+		<appender-ref ref="STDOUT" />
+		<appender-ref ref="F" />
+		<appender-ref ref="Simulation" />
+		<appender-ref ref="Register" />
 	</root>
 </configuration>

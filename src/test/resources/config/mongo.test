@@ -1,0 +1,10 @@
+#mongodb settings
+mongo.database=amazon
+mongo.host=121.201.28.228
+mongo.port=27017
+mongo.connections.per.host=20
+mongo.threads.allowed.to.block.for.connection.multiplier=8
+mongo.connect.timeout=50000
+mongo.max.wait.time=50000
+mongo.socket.timeout=50000
+mongo.write.concern=SAFE

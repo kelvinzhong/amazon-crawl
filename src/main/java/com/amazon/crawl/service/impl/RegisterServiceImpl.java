@@ -49,6 +49,7 @@ import com.organization.common.util.general.Constants;
 @Service
 public class RegisterServiceImpl implements RegisterService {
 	private static final Logger log = LoggerFactory.getLogger(RegisterServiceImpl.class);
+	private static final Logger registerLog = LoggerFactory.getLogger("RegisterTask");
 
 	@Resource
 	private ProxyDao proxyDao;
@@ -103,7 +104,7 @@ public class RegisterServiceImpl implements RegisterService {
 			webClient = HtmlUnitHandler.initializeClient(task.getProxy().getHost(), task.getProxy().getPort());
 			HtmlUnitHandler.proxyForWebClient(webClient, task.getProxy().getUserName(), task.getProxy().getPassword());
 
-			log.info("Start register amazon user");
+			registerLog.info("Start register amazon user");
 			if (registerAmazonUser(webClient, user)) {
 				Set<Cookie> cookies = webClient.getCookieManager().getCookies();
 				if (!CollectionUtils.isEmpty(cookies))
@@ -118,15 +119,15 @@ public class RegisterServiceImpl implements RegisterService {
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-				log.info("Register amazon user successfully! {}", JSON.toJSONString(user));
+				registerLog.info("Register amazon user successfully! {}", JSON.toJSONString(user));
 				amazonUserDao.insertAmazonUser(user);
 			} else {
-				log.warn("Register task {} fail!", task.getId());
+				registerLog.warn("Register task {} fail!", task.getId());
 				registerDao.updateRegisterTaskStatusById(task.getId(), Constants.STATUS_DELETE);
 			}
 
 		} catch (Exception e) {
-			log.error("error during register amazon user!", e);
+			registerLog.error("error during register amazon user!", e);
 			registerDao.updateRegisterTaskStatusById(task.getId(), Constants.STATUS_DELETE);
 		} finally {
 
@@ -136,9 +137,9 @@ public class RegisterServiceImpl implements RegisterService {
 			// } catch (InterruptedException e) {
 			// log.error("interrupt during sleep", e);
 			// }
-
 			webClient.getCurrentWindow().getJobManager().removeAllJobs();
 			webClient.close();
+			log.debug("release web client resource");
 		}
 
 		return false;
@@ -148,7 +149,7 @@ public class RegisterServiceImpl implements RegisterService {
 
 		try {
 			HtmlPage page = webClient.getPage("https://www.amazon.com/");
-			log.info("Open amazon home page");
+			registerLog.info("Open amazon home page");
 
 			HtmlPage userHome = null;
 			HtmlPage register = null;
@@ -156,7 +157,7 @@ public class RegisterServiceImpl implements RegisterService {
 			do {
 
 				if (userHome != null) {
-					log.info("Email address already in use, register fail, try again");
+					registerLog.info("Email address already in use, register fail, try again");
 
 					userHome.getByXPath("//a");
 					anchorList = userHome.getByXPath("//a[@class='a-link-normal']");
@@ -174,12 +175,12 @@ public class RegisterServiceImpl implements RegisterService {
 				for (Object o : anchorList)
 					if (((HtmlAnchor) o).getHrefAttribute().contains("www.amazon.com/ap/register")) {
 						register = ((HtmlAnchor) o).click();
-						log.info("Click into register page");
+						registerLog.info("Click into register page");
 						break;
 					}
 
 				if (register == null) {
-					log.error("Seems the link of register page changed in https://www.amazon.com!");
+					registerLog.error("Seems the link of register page changed in https://www.amazon.com!");
 					return false;
 				}
 
@@ -189,7 +190,7 @@ public class RegisterServiceImpl implements RegisterService {
 
 				HtmlSubmitInput button = form.getFirstByXPath("//input[@id='continue']");
 				userHome = button.click();
-				log.info("Submit register");
+				registerLog.info("Submit register");
 
 			} while (userHome.asText().contains("Email address already in use"));
 
@@ -199,7 +200,12 @@ public class RegisterServiceImpl implements RegisterService {
 				return false;
 
 		} catch (Exception e) {
-			log.error("error during register user", e);
+			registerLog.error("error during register user", e);
+			if(e.toString().contains("Read timed out")){
+				user.setStatus(Constants.STATUS_DELETE);
+				amazonUserDao.insertAmazonUser(user);
+			}
+				
 			return false;
 		}
 
@@ -245,7 +251,7 @@ public class RegisterServiceImpl implements RegisterService {
 		try {
 			return nameQueque.take();
 		} catch (InterruptedException e) {
-			log.error("error during take a name from queque", e);
+			registerLog.error("error during take a name from queque", e);
 		}
 		return null;
 	}
@@ -259,8 +265,8 @@ public class RegisterServiceImpl implements RegisterService {
 			else
 				newName = name.replaceAll("\\s", "");
 
-		newName = newName.replaceAll("(", "");
-		newName = newName.replaceAll(")", "");
+		newName = newName.replaceAll("\\u0028", "");
+		newName = newName.replaceAll("\\u0029", "");
 
 		if (Math.random() < 0.3) {
 			if (capitalIndex(newName) != -1) // 保留第一个英文单词
