@@ -35,6 +35,8 @@ public class ScheduleJobs extends AbstractTaskJob {
 				log.info(" {}，分配当日模拟点击Task列表开始  >>>>>>>", now.toString());
 				SimulationServiceImpl.taskDate = DateUtils.getTodayZeorHour();
 				SimulationServiceImpl.keywordMap.clear();
+				SimulationServiceImpl.doneMap.clear();
+				SimulationServiceImpl.waitingMap.clear();
 				simulationService.startGenerateSimulationTask();
 				log.info(" {} - {}，分配当日模拟点击Task列表结束  >>>>>>>", now.toString(), new Date().toString());
 			}
@@ -48,18 +50,19 @@ public class ScheduleJobs extends AbstractTaskJob {
 
 	public static void init(ApplicationContext context) {
 
-		try {
-			AbstractTaskJob.jobDetail.put(SIMULATION_TASK_KEY,
-					context.getBean("simulationService", SimulationService.class));
+		if (Configuration.getProperty("simulation.schedule.task", true))
+			try {
+				AbstractTaskJob.jobDetail.put(SIMULATION_TASK_KEY,
+						context.getBean("simulationService", SimulationService.class));
 
-			String cron = Configuration.getValue("SIMULATION_TASK_QUARTZ_CRON", "0 00 04 * * ?");
-			AbstractTaskJob.selfInit(ScheduleJobs.class, SIMULATION_TASK_KEY, cron);
-			log.info("********************分配当日模拟点击Task列表初始化成功********************"); // TODO
-			// 每晚10.30执行生成第二天任务列表
+				String cron = Configuration.getValue("SIMULATION_TASK_QUARTZ_CRON", "0 00 04 * * ?");
+				AbstractTaskJob.selfInit(ScheduleJobs.class, SIMULATION_TASK_KEY, cron);
+				log.info("********************分配当日模拟点击Task列表初始化成功********************"); // TODO
+				// 每晚10.30执行生成第二天任务列表
 
-		} catch (Exception e) {
-			log.error("Create SIMULATION task init failed", e);
-		}
+			} catch (Exception e) {
+				log.error("Create SIMULATION task init failed", e);
+			}
 
 	}
 }

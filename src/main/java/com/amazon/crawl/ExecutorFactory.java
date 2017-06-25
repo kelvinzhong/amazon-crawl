@@ -5,9 +5,9 @@ import java.util.concurrent.Executors;
 
 public class ExecutorFactory {
 
-	private static final ExecutorService SIMULATION_EXECUTOR = Executors.newFixedThreadPool(10);
+	private static final ExecutorService SIMULATION_EXECUTOR = Executors.newFixedThreadPool(5);
 	
-	private static final ExecutorService RANKING_EXECUTOR = Executors.newFixedThreadPool(10);
+	private static final ExecutorService RANKING_EXECUTOR = Executors.newFixedThreadPool(5);
 	
 	//generate register task, process register task, process simulation task
 	private static final ExecutorService TASK_EXECUTOR = Executors.newFixedThreadPool(3);

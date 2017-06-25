@@ -13,6 +13,6 @@ public class ProxyServiceTest extends BaseTest {
 
 	@Test
 	public void test2() {
-		proxyService.loadProxyList("C:/Users/zwbma/Desktop/NA0.txt");
+		proxyService.loadProxyList("C:/Users/zwbma/Desktop/HWGIP/NA2.txt");
 	}
 }

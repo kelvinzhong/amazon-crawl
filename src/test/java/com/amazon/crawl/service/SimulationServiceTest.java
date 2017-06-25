@@ -1,5 +1,6 @@
 package com.amazon.crawl.service;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
@@ -16,6 +17,9 @@ import javax.annotation.Resource;
 
 import org.junit.Test;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.util.CollectionUtils;
 
 import com.alibaba.fastjson.JSON;
@@ -45,6 +49,12 @@ public class SimulationServiceTest extends BaseTest {
 	private MongoTemplate mongoTemplate;
 	@Resource
 	private AmazonUserDao amazonUserDao;
+	@Resource(name = "redisTemplate")
+	private ZSetOperations<String, Serializable> zsetOper;
+	@Resource(name = "redisTemplate")
+	private ValueOperations<String, Serializable> opsForValue;
+	@Resource
+	protected RedisTemplate<Serializable, Serializable> redisTemplate;
 
 	@Test
 	public void test() throws InterruptedException {
@@ -54,23 +64,23 @@ public class SimulationServiceTest extends BaseTest {
 		simulationService.startGenerateSimulationTask();
 		Thread.sleep(10000000);
 	}
-	
+
 	@Test
-	public void test9() throws InterruptedException{
+	public void test9() throws InterruptedException {
 		simulationService.executeSimulationTask();
 		Thread.sleep(10000000);
 	}
-	
+
 	@Test
-	public void test8(){
+	public void test8() {
 		amazonUserDao.upsertUserClickTimesRecord("test", "test");
 		UserShoppingRecord record = amazonUserDao.updateUserWishListForAsin("test", "test");
-		if(record == null)
+		if (record == null)
 			System.out.println("null");
 	}
-	
+
 	@Test
-	public void test10(){
+	public void test10() {
 
 		SimulationServiceImpl.taskDate = DateUtils.getTodayZeorHour();
 		long a = productDao.getCountBeforeSKU("lightning cables", "Electronics", 1, 23, SimulationServiceImpl.taskDate);
@@ -127,12 +137,40 @@ public class SimulationServiceTest extends BaseTest {
 		TargetSKU target = new TargetSKU();
 		target.setCreateTime(new Date());
 		target.setUpdateTime(new Date());
-		target.setAsin("B0718VVF6W");
-		target.setProductName("H1-LC-GoldRatio");
+		target.setAsin("B072HG8VLB");
+		target.setProductName("usb-lightning");
 		target.setCategoryList(Arrays.asList(new String[] { "All Departments", "Cell Phones & Accessories" }));
-		target.setKeywordList(Arrays.asList(new String[] { "iphone cable", "iphone cables", "lightning cable",
-				"lightning cables", "iphone lightning cable", "iphone charger braided", "braided lightning cable" }));
+		target.setKeywordList(Arrays.asList(new String[] { "iphone cable", "iphone 6 cable", "iphone charging cable",
+				"iphone cord", "iphone cable lightning", "iphone charger", "lightning cable", "usb to lightning cable",
+				"iphone usb cable", "lightning to usb cable", "usb lightning cable", "iphone lightning cable",
+				"black lightning cable", "iphone cords", "iphone cables" }));
+		target.setSimulate(true);
 
 		productDao.insertTargetSKU(target);
+	}
+
+	@Test
+	public void test6() {
+		System.out.println(zsetOper.add("search", "category keyword", new Date().getTime()));
+	}
+
+	@Test
+	public void test7() {
+		SimulationServiceImpl.taskDate = DateUtils.getTodayZeorHour();
+		SimulationServiceImpl.keywordMap.clear();
+		SimulationServiceImpl.doneMap.clear();
+		SimulationServiceImpl.waitingMap.clear();
+		Date cursor = new Date();
+		List<TargetSKU> skuList = productDao.getSkuList(cursor);
+
+		while (!CollectionUtils.isEmpty(skuList)) {
+			for (TargetSKU sku : skuList)
+				for (String category : sku.getCategoryList())
+					for (String keyword : sku.getKeywordList())
+						simulationService.setDailyRankingAndSimulationTask(sku, category, keyword);
+
+			cursor = skuList.get(skuList.size() - 1).getCreateTime();
+			skuList = productDao.getSkuList(cursor);
+		}
 	}
 }

@@ -38,11 +38,9 @@ public class AppServlet extends HttpServlet {
 		this.ctx = WebApplicationContextUtils.getWebApplicationContext(config.getServletContext());
 
 		log.debug("Schedule start init!");
-		// 检查是否开启模拟点击
-		if ("on".equals(Configuration.getProperty("SIMULATION_TASK", "on"))) {
-			log.debug("Simulation job init!");
-			ScheduleJobs.init(ctx);
-		}
+		log.debug("Simulation job init!");
+		ScheduleJobs.init(ctx);
+
 	}
 
 }

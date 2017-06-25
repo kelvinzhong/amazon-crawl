@@ -5,7 +5,7 @@
 		class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<File>/opt/logs/amazon/package.log</File>
 		<encoder>
-			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t]: %c{1}.%M %L: %m%n
+			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t]: %c{1}.%M %L 2: %m%n
 			</pattern>
 			<charset>UTF8</charset>
 		</encoder>
@@ -71,7 +71,7 @@
 		class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<File>/opt/logs/amazon/emulateShopping.log</File>
 		<encoder>
-			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t]: %c{1}.%M %L: %m%n
+			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [%t]: %c{1}.%M %L 2: %m%n
 			</pattern>
 			<charset>UTF8</charset>
 		</encoder>

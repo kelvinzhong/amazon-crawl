@@ -216,7 +216,7 @@ public class CrawlServiceImpl implements CrawlService {
 							nextPage.setAttribute("href", uri.substring(0, uri.indexOf("spIA=") - 1));
 							while (true) {
 								try {
-									result = webClient.getPage(uri.substring(0, uri.indexOf("spIA=") - 1));
+									result = nextPage.click();
 
 									if (StringUtils.isEmpty(result.asText())) {
 										if (!uri.contains("page="))
@@ -251,7 +251,6 @@ public class CrawlServiceImpl implements CrawlService {
 
 			if (result.getByXPath("//a[@title='Next Page']").isEmpty()) {
 				simulationLog.info("keyword {} category {} has no next page", keyword, category);
-				simulationLog.debug("{}", result.asXml());
 			}
 		} finally {
 			Set<Cookie> cookies = webClient.getCookieManager().getCookies();

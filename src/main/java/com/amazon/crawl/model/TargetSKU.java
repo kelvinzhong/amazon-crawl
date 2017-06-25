@@ -13,6 +13,15 @@ public class TargetSKU {
 	private Date updateTime;
 	private int status;
 	private List<String> categoryList;
+	private boolean simulate;
+
+	public boolean isSimulate() {
+		return simulate;
+	}
+
+	public void setSimulate(boolean simulate) {
+		this.simulate = simulate;
+	}
 
 	public List<String> getCategoryList() {
 		return categoryList;

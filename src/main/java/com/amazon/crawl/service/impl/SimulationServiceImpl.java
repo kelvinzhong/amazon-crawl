@@ -48,6 +48,7 @@ public class SimulationServiceImpl implements SimulationService {
 	public static Map<String, Set<String>> keywordMap = new HashMap<String, Set<String>>();
 	public static Map<String, Set<String>> doneMap = new HashMap<String, Set<String>>();
 	public static Map<String, List<TargetSKU>> waitingMap = new HashMap<String, List<TargetSKU>>();
+	private static List<Future<?>> futureList = new ArrayList<Future<?>>();
 
 	@Resource
 	private ProductDao productDao;
@@ -73,7 +74,7 @@ public class SimulationServiceImpl implements SimulationService {
 		if (task == null)
 			return true;
 
-		simulationExecutor.submit(() -> {
+		Future<?> future = simulationExecutor.submit(() -> {
 			WebClientFactory factory = new WebClientFactory();
 
 			while (true) {
@@ -87,12 +88,18 @@ public class SimulationServiceImpl implements SimulationService {
 					AmazonUser user = amazonUserDao.getRandomAmazonUser(new Long(count).intValue());
 
 					emulateShoppingService.simulateClickPage(factory, task, user);
+					futureList.remove(0);
 					break;
 				} catch (Exception e) {
 					simulationLog.error("", e);
 				}
 			}
 		});
+		
+		futureList.add(future);
+		
+		if(futureList.size() > 5)
+			return true;
 
 		return false;
 	}
@@ -189,7 +196,8 @@ public class SimulationServiceImpl implements SimulationService {
 		SKUInfo info = productDao.getSKUInfo(sku.getAsin(), keyword, category, taskDate);
 
 		if (info != null) {
-			simulationDao.insertSimulationTask(info.getSimulationTask(taskDate));
+			if (sku.isSimulate())
+				simulationDao.insertSimulationTask(info.getSimulationTask(taskDate));
 
 			ranking.setColumn(info.getColumnNum());
 			ranking.setPage(info.getPageNum());

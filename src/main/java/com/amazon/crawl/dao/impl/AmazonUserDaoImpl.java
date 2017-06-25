@@ -37,7 +37,7 @@ public class AmazonUserDaoImpl implements AmazonUserDao {
 	@Override
 	public AmazonUser getRandomAmazonUser(int count) {
 		return mongoTemplate
-				.find(query(where("status").is(Constants.STATUS_NORMAL)).skip(new Random().nextInt(count)).limit(1),
+				.find(query(where("status").is(Constants.STATUS_NORMAL)).skip(new Random().nextInt(count - 1)).limit(1),
 						AmazonUser.class)
 				.get(0);
 	}

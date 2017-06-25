@@ -42,6 +42,7 @@ import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
 import com.gargoylesoftware.htmlunit.html.HtmlEmailInput;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
+import com.gargoylesoftware.htmlunit.html.HtmlImageInput;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 import com.gargoylesoftware.htmlunit.html.HtmlPasswordInput;
 import com.gargoylesoftware.htmlunit.html.HtmlSpan;
@@ -261,7 +262,7 @@ public class EmulateShoppingServiceImpl implements EmulateShoppingService {
 						nextPage.setAttribute("href", uri.substring(0, uri.indexOf("spIA=") - 1));
 						while (true) {
 							try {
-								result = webClient.getPage(uri.substring(0, uri.indexOf("spIA=") - 1));
+								result = nextPage.click();
 
 								if (StringUtils.isEmpty(result.asText())) {
 									if (!uri.contains("page="))
@@ -296,7 +297,6 @@ public class EmulateShoppingServiceImpl implements EmulateShoppingService {
 
 		if (result.getByXPath("//a[@title='Next Page']").isEmpty()) {
 			emulateShoppingLog.info("keyword {} category {} has no next page", task.getKeyword(), task.getCategory());
-			emulateShoppingLog.debug("{}", result.asXml());
 		}
 	}
 
@@ -316,7 +316,7 @@ public class EmulateShoppingServiceImpl implements EmulateShoppingService {
 
 	public boolean addAsinWishList(WebClient webClient, HtmlPage asinPage, AmazonUser user, String asin)
 			throws IOException {
-		if (Math.random() < 1) {
+		if (Math.random() < 0.2) {
 			emulateShoppingLog.info("try to add asin into wish list");
 
 			UserShoppingRecord record = amazonUserDao.updateUserWishListForAsin(user.getId(), asin);
@@ -326,52 +326,51 @@ public class EmulateShoppingServiceImpl implements EmulateShoppingService {
 				return false;
 			}
 
-			for (HtmlForm form : asinPage.getForms()) {
+			for (HtmlForm form : asinPage.getForms())
 				if (form.getId().equals("addToCart")) {
 
-					LinkedList<WebWindow> windows = new LinkedList<WebWindow>();
-					webClient.addWebWindowListener(new WebWindowListener() {
-						public void webWindowOpened(WebWindowEvent event) {
-//							windows.add(event.getWebWindow());
-							System.out.println("opened");
+					HtmlSubmitInput submit = (HtmlSubmitInput) asinPage.getElementById("add-to-wishlist-button-submit");
+					HtmlPage wishList = submit.click();
+
+					if (wishList.asText().contains("1 item added to")) {
+						emulateShoppingLog.info("add asin {} into wish list susseccfully", asin);
+						return true;
+					}
+
+					if (!CollectionUtils.isEmpty(wishList.getByXPath("//input[@alt='Create a List']"))) {
+						emulateShoppingLog.info("create wish list");
+						HtmlPage createWishList = (HtmlPage) ((HtmlImageInput) wishList
+								.getByXPath("//input[@alt='Create a List']").get(0)).click();
+
+						if (createWishList.asText().contains("1 item added to")) {
+							emulateShoppingLog.info("add asin {} into wish list susseccfully", asin);
+							return true;
 						}
 
-						@Override
-						public void webWindowContentChanged(WebWindowEvent event) {
-							System.out.println("change");
-//							System.out.println(event.getWebWindow().getEnclosedPage().toString());
+						emulateShoppingLog.info("add asin {} fail {}", asin, createWishList.asXml());
+					} else if (wishList.getElementById("WLNEW_newwl_section") != null) {
+						emulateShoppingLog.info("select wish list");
+						wishList.getElementById("WLNEW_newwl_section").setAttribute("class",
+								"a-section a-spacing-base WLNEW_selected");
+
+						HtmlPage addToList = (HtmlPage) ((HtmlAnchor) wishList.getElementById("WLNEW_valid_submit"))
+								.click();
+						if (addToList.asText().contains("1 item added to")) {
+							emulateShoppingLog.info("add asin {} into wish list susseccfully", asin);
+							return true;
 						}
 
-						@Override
-						public void webWindowClosed(WebWindowEvent event) {
-							System.out.println("closed");
-						}
-					});
-					System.out.println(form.getId());
-					HtmlSpan submit = (HtmlSpan) asinPage.getElementById("wishListMainButton");
-					HtmlPage s = submit.click();
-					emulateShoppingLog.debug("{}",s.asXml());
-					System.out.println("finished");
-//					System.out.println(getPopupPage(windows).asText());
+						emulateShoppingLog.info("add asin {} fail {}", asin, addToList.asXml());
+					}
 
-					HtmlUnorderedList ulList = asinPage.getHtmlElementById("atwl-dd-ul");
-					if (ulList == null)
-						System.out.println("null");
-					Iterable<DomElement> liList = ulList.getChildElements();
-					DomElement d = liList.iterator().next();
-					System.out.println(d.getAttribute("id"));
-
-					Page page = d.mouseDown();
-					System.out.println(page.toString());
 					break;
 				}
-			}
 		}
 
 		return false;
 	}
 
-	public boolean addAsinCart(HtmlPage asinPage, AmazonUser user, String asin) {
+	public boolean addAsinCart(HtmlPage asinPage, AmazonUser user, String asin) throws IOException {
 		if (Math.random() < 0.2) {
 			emulateShoppingLog.info("try to add asin {} into cart", asin);
 
@@ -381,6 +380,16 @@ public class EmulateShoppingServiceImpl implements EmulateShoppingService {
 				emulateShoppingLog.info("user {} already add asin {} into cart", user.getId(), asin);
 				return false;
 			}
+
+			HtmlSubmitInput submit = (HtmlSubmitInput) asinPage.getElementById("add-to-cart-button");
+			HtmlPage cart = submit.click();
+
+			if (cart.asText().contains("Added to Cart")) {
+				emulateShoppingLog.info("add to cart successfully");
+				return true;
+			}
+
+			emulateShoppingLog.debug("add asin {} cart fail {}", asin, cart.asXml());
 		}
 
 		return false;
